@@ -25,7 +25,18 @@ describe('gm-coin', () => {
       [_vault.publicKey.toBuffer()],
       program.programId
     )
-    const tx = await program.rpc.initialize({
+
+    const [_pda, _bump] = await anchor.web3.PublicKey.findProgramAddress(
+      [Buffer.from(anchor.utils.bytes.utf8.encode("gm_coin"))],
+      program.programId
+    );
+    const cooloffSeconds = new anchor.BN(30);
+    const tx = await program.rpc.initialize(_bump, cooloffSeconds, {
+      accounts: {
+        globalState: _pda,
+        payer: program.provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
       signers: [_vault],
       instructions: [
         ...(await serumCmn.createTokenAccountInstrs(

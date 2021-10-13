@@ -6,7 +6,11 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 #[program]
 pub mod gm_coin {
     use super::*;
-    pub fn initialize(ctx: Context<Initialize>) -> ProgramResult {
+    pub fn initialize(ctx: Context<Initialize>, bump: u8, cooloff_seconds: u64) -> ProgramResult {
+        msg!("initialized");
+        let global_state = &mut ctx.accounts.global_state;
+        global_state.bump = bump;
+        global_state.cooloff_seconds = cooloff_seconds;
         Ok(())
     }
     pub fn fund(ctx: Context<FundVault>, amount: u64) -> ProgramResult {
@@ -68,7 +72,13 @@ fn it_works() {
 }
 
 #[derive(Accounts)]
-pub struct Initialize {}
+#[instruction(bump: u8)]
+pub struct Initialize<'info> {
+    #[account(init, seeds = [b"gm_coin".as_ref()], bump = bump, payer = payer, space = 8 + 8 + 1)]
+    global_state: Account<'info, GlobalState>,
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
+}
 
 #[derive(Accounts)]
 pub struct FundVault<'info> {
@@ -131,3 +141,10 @@ pub struct VisitAgain<'info> {
     owner: AccountInfo<'info>,
     token_program: AccountInfo<'info>,
 }
+
+#[account]
+pub struct GlobalState {
+    cooloff_seconds: u64,
+    bump: u8,
+}
+
