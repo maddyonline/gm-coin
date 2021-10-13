@@ -99,6 +99,7 @@ describe('gm-coin', () => {
         owner: visitor.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
+        clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
       },
       signers: [visitor]
     });
@@ -119,11 +120,13 @@ describe('gm-coin', () => {
           owner: visitor.publicKey,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: anchor.web3.SystemProgram.programId,
+          clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
         },
         signers: [visitor]
       });
       console.log("Second tx", tx2);
     } catch (error) {
+      // TODO (maddy): throw better error
       console.log(`As expected, got error, reinitializing account a second time`, error)
       console.log({ amount: (await serumCmn.getTokenAccount(program.provider, visitorTokenAccount)).amount.toNumber() });
 
@@ -139,16 +142,24 @@ describe('gm-coin', () => {
           to: visitorTokenAccount,
           owner: visitor.publicKey,
           tokenProgram: TOKEN_PROGRAM_ID,
+          clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
         },
         signers: [visitor]
       });
 
       console.log("Revisit tx", tx);
       let visitorStateAccount = await program.account.visitorState.fetch(visitorState);
-      console.log({ visitorCount: visitorStateAccount.visitCount.toNumber() });
+      console.log({
+        visitorCount: visitorStateAccount.visitCount.toNumber(),
+        lastVisit: visitorStateAccount.lastVisit.toNumber(),
+      });
       console.log({ amount: (await serumCmn.getTokenAccount(program.provider, visitorTokenAccount)).amount.toNumber() });
     }
 
+    await revisit();
+    await revisit();
+    await new Promise(r => setTimeout(r, 30 * 1000));
+    await revisit();
     await revisit();
     await revisit();
     await revisit();

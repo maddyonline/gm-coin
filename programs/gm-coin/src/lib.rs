@@ -23,6 +23,7 @@ pub mod gm_coin {
 
     pub fn first_visit(ctx: Context<FirstVisit>, nonce: u8, visitor_bump: u8) -> ProgramResult {
         ctx.accounts.visitor_state.visit_count = 1;
+        ctx.accounts.visitor_state.last_visit = ctx.accounts.clock.unix_timestamp;
         ctx.accounts.visitor_state.bump = visitor_bump;
         let seeds = &[ctx.accounts.vault.to_account_info().key.as_ref(), &[nonce]];
         let signer = &[&seeds[..]];
@@ -44,7 +45,8 @@ pub mod gm_coin {
             ctx.accounts.visitor_state.visit_count
         );
 
-        if ctx.accounts.visitor_state.visit_count % 3 == 0 {
+        if ctx.accounts.clock.unix_timestamp - ctx.accounts.visitor_state.last_visit > 30 {
+            ctx.accounts.visitor_state.last_visit = ctx.accounts.clock.unix_timestamp;
             let seeds = &[ctx.accounts.vault.to_account_info().key.as_ref(), &[nonce]];
             let signer = &[&seeds[..]];
             let cpi_accounts = Transfer {
@@ -58,6 +60,11 @@ pub mod gm_coin {
         }
         Ok(())
     }
+}
+
+#[test]
+fn it_works() {
+    assert_eq!(2 + 2, 4);
 }
 
 #[derive(Accounts)]
@@ -77,9 +84,10 @@ pub struct FundVault<'info> {
 #[derive(Accounts)]
 #[instruction(nonce: u8, visitor_bump: u8)]
 pub struct FirstVisit<'info> {
+    clock: Sysvar<'info, Clock>,
     payer: Signer<'info>,
     visitor: Signer<'info>,
-    #[account(init, seeds = [visitor.key.as_ref()], bump = visitor_bump, payer = payer, space = 8 + 8 + 1)]
+    #[account(init, seeds = [visitor.key.as_ref()], bump = visitor_bump, payer = payer, space = 8 + 8 + 8 + 1)]
     visitor_state: Account<'info, VisitorState>,
     #[account(mut)]
     vault: AccountInfo<'info>,
@@ -99,12 +107,14 @@ pub struct FirstVisit<'info> {
 #[account]
 pub struct VisitorState {
     visit_count: u64,
+    last_visit: i64,
     bump: u8,
 }
 
 #[derive(Accounts)]
 #[instruction(nonce: u8)]
 pub struct VisitAgain<'info> {
+    clock: Sysvar<'info, Clock>,
     visitor: Signer<'info>,
     #[account(mut, seeds = [visitor.key.as_ref()], bump = visitor_state.bump)]
     visitor_state: Account<'info, VisitorState>,
