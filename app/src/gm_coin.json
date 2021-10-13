@@ -1,0 +1,229 @@
+{
+  "version": "0.0.0",
+  "name": "gm_coin",
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [
+        {
+          "name": "globalState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u8"
+        },
+        {
+          "name": "cooloffSeconds",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "fund",
+      "accounts": [
+        {
+          "name": "from",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "firstVisit",
+      "accounts": [
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "visitor",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "visitorState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "to",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "type": "u8"
+        },
+        {
+          "name": "visitorBump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "visitAgain",
+      "accounts": [
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "globalState",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "visitor",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "visitorState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "to",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "type": "u8"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "VisitorState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "visitCount",
+            "type": "u64"
+          },
+          {
+            "name": "lastVisit",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GlobalState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cooloffSeconds",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "address": "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+  }
+}
