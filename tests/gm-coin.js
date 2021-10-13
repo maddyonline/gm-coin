@@ -76,5 +76,26 @@ describe('gm-coin', () => {
     console.log("Your transaction signature", tx);
   });
 
+  it('requesting token works', async () => {
+    const program = anchor.workspace.GmCoin;
+    const receiver = anchor.web3.Keypair.generate();
+    const receiverTokenAccount = await serumCmn.createTokenAccount(
+      program.provider,
+      mint,
+      receiver.publicKey,
+    );
+    const tx = await program.rpc.requestToken(nonce, {
+      accounts: {
+        vault: vault.publicKey,
+        vaultProgram,
+        to: receiverTokenAccount,
+        owner: receiver.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      },
+      signers: [receiver]
+    });
+    console.log("Your transaction signature", tx);
+  });
+
 
 });
