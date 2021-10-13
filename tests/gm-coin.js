@@ -62,5 +62,19 @@ describe('gm-coin', () => {
     assert.equal(nonce === undefined, false);
   });
 
+  it('funding vault works', async () => {
+    const program = anchor.workspace.GmCoin;
+    const amountToFund = new anchor.BN(10_000) // BN: BigNumber
+    const tx = await program.rpc.fund(amountToFund, {
+      accounts: {
+        from: originalVault,
+        vault: vault.publicKey,
+        owner: program.provider.wallet.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      },
+    });
+    console.log("Your transaction signature", tx);
+  });
+
 
 });
