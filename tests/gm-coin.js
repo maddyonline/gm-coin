@@ -102,7 +102,28 @@ describe('gm-coin', () => {
       },
       signers: [visitor]
     });
-    console.log("Your transaction signature", tx);
+    console.log("First tx. Sleeping ...", tx);
+    await new Promise(r => setTimeout(r, 4000));
+    try {
+
+      const tx2 = await program.rpc.requestToken(nonce, visitorBump, {
+        accounts: {
+          payer: program.provider.wallet.publicKey,
+          visitor: visitor.publicKey,
+          visitorState,
+          vault: vault.publicKey,
+          vaultProgram,
+          to: visitorTokenAccount,
+          owner: visitor.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        },
+        signers: [visitor]
+      });
+      console.log("Second tx", tx2);
+    } catch (error) {
+      console.log(`As expected, got error, reinitializing account a second time`, error)
+    }
   });
 
 
