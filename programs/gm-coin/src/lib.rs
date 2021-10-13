@@ -21,7 +21,7 @@ pub mod gm_coin {
         Ok(())
     }
 
-    pub fn request_token(ctx: Context<RequestTokenFirstVisit>, nonce: u8, visitor_bump: u8) -> ProgramResult {
+    pub fn first_visit(ctx: Context<FirstVisit>, nonce: u8, visitor_bump: u8) -> ProgramResult {
         ctx.accounts.visitor_state.visit_count = 1;
         ctx.accounts.visitor_state.bump = visitor_bump;
         let seeds = &[ctx.accounts.vault.to_account_info().key.as_ref(), &[nonce]];
@@ -34,6 +34,28 @@ pub mod gm_coin {
         let cpi_program = ctx.accounts.token_program.clone();
         let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
         token::transfer(cpi_ctx, 10)?;
+        Ok(())
+    }
+    pub fn visit_again(ctx: Context<VisitAgain>, nonce: u8) -> ProgramResult {
+        ctx.accounts.visitor_state.visit_count += 1;
+        msg!(
+            "Welcome back {}, you've now visited {} times.",
+            ctx.accounts.visitor.key,
+            ctx.accounts.visitor_state.visit_count
+        );
+
+        if ctx.accounts.visitor_state.visit_count % 3 == 0 {
+            let seeds = &[ctx.accounts.vault.to_account_info().key.as_ref(), &[nonce]];
+            let signer = &[&seeds[..]];
+            let cpi_accounts = Transfer {
+                from: ctx.accounts.vault.to_account_info().clone(),
+                to: ctx.accounts.to.to_account_info().clone(),
+                authority: ctx.accounts.vault_program.clone(),
+            };
+            let cpi_program = ctx.accounts.token_program.clone();
+            let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+            token::transfer(cpi_ctx, 10)?;
+        }
         Ok(())
     }
 }
@@ -54,12 +76,11 @@ pub struct FundVault<'info> {
 
 #[derive(Accounts)]
 #[instruction(nonce: u8, visitor_bump: u8)]
-pub struct RequestTokenFirstVisit<'info> {
+pub struct FirstVisit<'info> {
     payer: Signer<'info>,
     visitor: Signer<'info>,
     #[account(init, seeds = [visitor.key.as_ref()], bump = visitor_bump, payer = payer, space = 8 + 8 + 1)]
     visitor_state: Account<'info, VisitorState>,
-    
     #[account(mut)]
     vault: AccountInfo<'info>,
     #[account(
@@ -79,4 +100,24 @@ pub struct RequestTokenFirstVisit<'info> {
 pub struct VisitorState {
     visit_count: u64,
     bump: u8,
+}
+
+#[derive(Accounts)]
+#[instruction(nonce: u8)]
+pub struct VisitAgain<'info> {
+    visitor: Signer<'info>,
+    #[account(mut, seeds = [visitor.key.as_ref()], bump = visitor_state.bump)]
+    visitor_state: Account<'info, VisitorState>,
+    #[account(mut)]
+    vault: AccountInfo<'info>,
+    #[account(
+        seeds = [vault.to_account_info().key.as_ref()],
+        bump = nonce,
+    )]
+    vault_program: AccountInfo<'info>,
+    #[account(mut, has_one = owner)]
+    to: Account<'info, TokenAccount>,
+    #[account(signer)]
+    owner: AccountInfo<'info>,
+    token_program: AccountInfo<'info>,
 }

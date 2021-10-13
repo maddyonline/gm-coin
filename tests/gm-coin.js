@@ -76,7 +76,7 @@ describe('gm-coin', () => {
     console.log("Your transaction signature", tx);
   });
 
-  it('requesting token works', async () => {
+  it('visits', async () => {
     const program = anchor.workspace.GmCoin;
     const visitor = anchor.web3.Keypair.generate();
     const visitorTokenAccount = await serumCmn.createTokenAccount(
@@ -88,7 +88,7 @@ describe('gm-coin', () => {
       [visitor.publicKey.toBuffer()],
       program.programId
     );
-    const tx = await program.rpc.requestToken(nonce, visitorBump, {
+    const tx = await program.rpc.firstVisit(nonce, visitorBump, {
       accounts: {
         payer: program.provider.wallet.publicKey,
         visitor: visitor.publicKey,
@@ -104,9 +104,11 @@ describe('gm-coin', () => {
     });
     console.log("First tx. Sleeping ...", tx);
     await new Promise(r => setTimeout(r, 4000));
+    console.log({ amount: (await serumCmn.getTokenAccount(program.provider, visitorTokenAccount)).amount.toNumber() });
+
     try {
 
-      const tx2 = await program.rpc.requestToken(nonce, visitorBump, {
+      const tx2 = await program.rpc.firstVisit(nonce, visitorBump, {
         accounts: {
           payer: program.provider.wallet.publicKey,
           visitor: visitor.publicKey,
@@ -123,7 +125,36 @@ describe('gm-coin', () => {
       console.log("Second tx", tx2);
     } catch (error) {
       console.log(`As expected, got error, reinitializing account a second time`, error)
+      console.log({ amount: (await serumCmn.getTokenAccount(program.provider, visitorTokenAccount)).amount.toNumber() });
+
     }
+
+    const revisit = async () => {
+      const tx = await program.rpc.visitAgain(nonce, {
+        accounts: {
+          visitor: visitor.publicKey,
+          visitorState,
+          vault: vault.publicKey,
+          vaultProgram,
+          to: visitorTokenAccount,
+          owner: visitor.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        },
+        signers: [visitor]
+      });
+
+      console.log("Revisit tx", tx);
+      let visitorStateAccount = await program.account.visitorState.fetch(visitorState);
+      console.log({ visitorCount: visitorStateAccount.visitCount.toNumber() });
+      console.log({ amount: (await serumCmn.getTokenAccount(program.provider, visitorTokenAccount)).amount.toNumber() });
+    }
+
+    await revisit();
+    await revisit();
+    await revisit();
+
+
+
   });
 
 
