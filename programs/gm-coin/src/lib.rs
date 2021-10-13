@@ -21,7 +21,9 @@ pub mod gm_coin {
         Ok(())
     }
 
-    pub fn request_token(ctx: Context<RequestToken>, nonce: u8) -> ProgramResult {
+    pub fn request_token(ctx: Context<RequestTokenFirstVisit>, nonce: u8, visitor_bump: u8) -> ProgramResult {
+        ctx.accounts.visitor_state.visit_count = 1;
+        ctx.accounts.visitor_state.bump = visitor_bump;
         let seeds = &[ctx.accounts.vault.to_account_info().key.as_ref(), &[nonce]];
         let signer = &[&seeds[..]];
         let cpi_accounts = Transfer {
@@ -51,8 +53,13 @@ pub struct FundVault<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(nonce: u8)]
-pub struct RequestToken<'info> {
+#[instruction(nonce: u8, visitor_bump: u8)]
+pub struct RequestTokenFirstVisit<'info> {
+    payer: Signer<'info>,
+    visitor: Signer<'info>,
+    #[account(init, seeds = [visitor.key.as_ref()], bump = visitor_bump, payer = payer, space = 8 + 8 + 1)]
+    visitor_state: Account<'info, VisitorState>,
+    
     #[account(mut)]
     vault: AccountInfo<'info>,
     #[account(
@@ -65,4 +72,11 @@ pub struct RequestToken<'info> {
     #[account(signer)]
     owner: AccountInfo<'info>,
     token_program: AccountInfo<'info>,
+    system_program: Program<'info, System>,
+}
+
+#[account]
+pub struct VisitorState {
+    visit_count: u64,
+    bump: u8,
 }

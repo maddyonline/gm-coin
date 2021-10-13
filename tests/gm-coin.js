@@ -78,21 +78,29 @@ describe('gm-coin', () => {
 
   it('requesting token works', async () => {
     const program = anchor.workspace.GmCoin;
-    const receiver = anchor.web3.Keypair.generate();
-    const receiverTokenAccount = await serumCmn.createTokenAccount(
+    const visitor = anchor.web3.Keypair.generate();
+    const visitorTokenAccount = await serumCmn.createTokenAccount(
       program.provider,
       mint,
-      receiver.publicKey,
+      visitor.publicKey,
     );
-    const tx = await program.rpc.requestToken(nonce, {
+    const [visitorState, visitorBump] = await anchor.web3.PublicKey.findProgramAddress(
+      [visitor.publicKey.toBuffer()],
+      program.programId
+    );
+    const tx = await program.rpc.requestToken(nonce, visitorBump, {
       accounts: {
+        payer: program.provider.wallet.publicKey,
+        visitor: visitor.publicKey,
+        visitorState,
         vault: vault.publicKey,
         vaultProgram,
-        to: receiverTokenAccount,
-        owner: receiver.publicKey,
+        to: visitorTokenAccount,
+        owner: visitor.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
       },
-      signers: [receiver]
+      signers: [visitor]
     });
     console.log("Your transaction signature", tx);
   });
