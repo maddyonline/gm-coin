@@ -6,14 +6,18 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 #[program]
 pub mod gm_coin {
     use super::*;
-    pub fn initialize(ctx: Context<Initialize>, bump: u8, cooloff_seconds: u64) -> ProgramResult {
-        msg!("initialized");
+    pub fn initialize(ctx: Context<Initialize>, bump: u8, cooloff_seconds: i64) -> ProgramResult {
+        msg!("instruction: [initialize]");
+        msg!("args: bump={}, cooloff_seconds={}", bump, cooloff_seconds);
         let global_state = &mut ctx.accounts.global_state;
         global_state.bump = bump;
         global_state.cooloff_seconds = cooloff_seconds;
         Ok(())
     }
     pub fn fund(ctx: Context<FundVault>, amount: u64) -> ProgramResult {
+        msg!("instruction: [fund]");
+        msg!("args: amount={}", amount);
+
         let cpi_accounts = Transfer {
             from: ctx.accounts.from.to_account_info().clone(),
             to: ctx.accounts.vault.to_account_info().clone(),
@@ -26,6 +30,8 @@ pub mod gm_coin {
     }
 
     pub fn first_visit(ctx: Context<FirstVisit>, nonce: u8, visitor_bump: u8) -> ProgramResult {
+        msg!("instruction: [first_visit]");
+        msg!("args: nonce={}, visitor_bump={}", nonce, visitor_bump);
         ctx.accounts.visitor_state.visit_count = 1;
         ctx.accounts.visitor_state.last_visit = ctx.accounts.clock.unix_timestamp;
         ctx.accounts.visitor_state.bump = visitor_bump;
@@ -42,14 +48,23 @@ pub mod gm_coin {
         Ok(())
     }
     pub fn visit_again(ctx: Context<VisitAgain>, nonce: u8) -> ProgramResult {
+        msg!("instruction: [visit_again]");
+        msg!("args: nonce={}", nonce);
+
         ctx.accounts.visitor_state.visit_count += 1;
+
         msg!(
             "Welcome back {}, you've now visited {} times.",
             ctx.accounts.visitor.key,
             ctx.accounts.visitor_state.visit_count
         );
+        let cooloff_seconds: i64 = ctx.accounts.global_state.cooloff_seconds;
+        msg!("Current cooloffSeconds is {}", cooloff_seconds);
 
-        if ctx.accounts.clock.unix_timestamp - ctx.accounts.visitor_state.last_visit > 30 {
+        if ctx.accounts.clock.unix_timestamp - ctx.accounts.visitor_state.last_visit
+            > cooloff_seconds
+        {
+            msg!("yay! getting a reward now.");
             ctx.accounts.visitor_state.last_visit = ctx.accounts.clock.unix_timestamp;
             let seeds = &[ctx.accounts.vault.to_account_info().key.as_ref(), &[nonce]];
             let signer = &[&seeds[..]];
@@ -125,6 +140,11 @@ pub struct VisitorState {
 #[instruction(nonce: u8)]
 pub struct VisitAgain<'info> {
     clock: Sysvar<'info, Clock>,
+    #[account(
+        seeds = [b"gm_coin".as_ref()],
+        bump = global_state.bump,
+    )]
+    pub global_state: Account<'info, GlobalState>,
     visitor: Signer<'info>,
     #[account(mut, seeds = [visitor.key.as_ref()], bump = visitor_state.bump)]
     visitor_state: Account<'info, VisitorState>,
@@ -144,7 +164,6 @@ pub struct VisitAgain<'info> {
 
 #[account]
 pub struct GlobalState {
-    cooloff_seconds: u64,
+    cooloff_seconds: i64,
     bump: u8,
 }
-

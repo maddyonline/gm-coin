@@ -144,8 +144,14 @@ describe('gm-coin', () => {
     }
 
     const revisit = async () => {
+      const [_pda, _bump] = await anchor.web3.PublicKey.findProgramAddress(
+        [Buffer.from(anchor.utils.bytes.utf8.encode("gm_coin"))],
+        program.programId
+      );
+
       const tx = await program.rpc.visitAgain(nonce, {
         accounts: {
+          globalState: _pda,
           visitor: visitor.publicKey,
           visitorState,
           vault: vault.publicKey,
