@@ -22,6 +22,7 @@ const createMint = async (
         anchorWallet,
         anchor.Provider.defaultOptions(),
     );
+    console.log({ address: IDL.metadata.address })
     const programId = new anchor.web3.PublicKey(IDL.metadata.address);
     const program = new anchor.Program(IDL, programId, provider);
 
@@ -33,7 +34,6 @@ const createMint = async (
         mint: _mint.toString(),
         originalVault: _originalVault.toString(),
     });
-    return;
     const _vault = anchor.web3.Keypair.generate();
 
     let [_vaultProgram, _nonce] = await anchor.web3.PublicKey.findProgramAddress(

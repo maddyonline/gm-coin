@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, TokenAccount, Transfer};
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("Ga2AwQnLartZJ2WtVP5hALiBNRo5AM4jkLah7gSVLkWi");
 
 #[program]
 pub mod gm_coin {
