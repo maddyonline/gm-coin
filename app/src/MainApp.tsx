@@ -14,6 +14,7 @@ declare global {
     interface Window {
         // add you custom properties and methods
         pdaAccount: any;
+        error: any;
     }
 }
 
