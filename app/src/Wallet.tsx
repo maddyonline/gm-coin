@@ -23,7 +23,6 @@ import {
     Route,
 } from "react-router-dom";
 import { Button } from '@material-ui/core';
-import { stringify } from 'querystring';
 
 const {
     ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -42,7 +41,13 @@ const { Connection } = anchor.web3;
 const IDL = require("./gm_coin.json")
 
 
-const createTokenAccount = async (program: any, mint: any, setGMAccount: any) => {
+const toAccountDetails = (account: any) => ({
+    amount: account.amount.toNumber(),
+    owner: account.owner.toString(),
+    mint: account.mint.toString(),
+})
+
+const createTokenAccount = async (program: any, mint: any, setGMAccount: any, setMyAddress: any) => {
     const associatedToken = await Token.getAssociatedTokenAddress(
         ASSOCIATED_TOKEN_PROGRAM_ID,
         TOKEN_PROGRAM_ID,
@@ -70,7 +75,10 @@ const createTokenAccount = async (program: any, mint: any, setGMAccount: any) =>
     try {
 
         const account = await client.getAccountInfo(associatedToken);
-        setGMAccount(account);
+        setGMAccount(toAccountDetails(account));
+        window.account = account;
+        setMyAddress(account.address.toString());
+
     } catch (error) {
         const errorMsg = (error as Error).message;
         setGMAccount({ error: errorMsg })
@@ -78,11 +86,16 @@ const createTokenAccount = async (program: any, mint: any, setGMAccount: any) =>
 }
 
 
+
+
+
+
 function Home() {
     const wallet = useAnchorWallet();
     const [program, setProgram] = React.useState(null);
-    const [gmAccount, setGMAccount] = React.useState<{ error: string; } | null>(null);
-    const [mint, setMint] = React.useState("4J6rkqPDobhwHo234QKCWRyPynJwwFRxGmA1A8ZsXD87");
+    const [myAddress, setMyAddress] = React.useState("");
+    const [gmAccount, setGMAccount] = React.useState<{ error: string; } | { amount: any; owner: string; mint: string; } | null>(null);
+    const [mint, setMint] = React.useState("2dTBAHogT1F7pdQ9NNeo4Joo8PHk4wefpu8VCztTtNYo");
 
 
     React.useEffect(() => {
@@ -103,7 +116,9 @@ function Home() {
             try {
 
                 const account = await client.getAccountInfo(associatedToken);
-                setGMAccount(account);
+                setGMAccount(toAccountDetails(account));
+                window.account = account;
+                setMyAddress(account.address.toString());
             } catch (error) {
                 const errorMsg = (error as Error).message;
                 setGMAccount({ error: errorMsg })
@@ -128,6 +143,7 @@ function Home() {
 
     }, [wallet])
     return <div>
+        <div>{"My Address"} {myAddress}</div>
         <div>{JSON.stringify(gmAccount)}</div>
         <form onSubmit={(e) => {
             e.preventDefault();
@@ -139,10 +155,25 @@ function Home() {
             <input value={mint} onChange={(e) => setMint(e.target.value)} name="mint" type="text" placeholder="mint" />
             <input type="submit" />
         </form>
-        {program && <Button variant="outlined" color="secondary"
+        {program && <Button onClick={async () => {
+            const [visitorState, _] = await anchor.web3.PublicKey.findProgramAddress(
+                [(program as any).provider.wallet.publicKey.toBuffer()],
+                (program as any).programId
+            )
+            let visitorStateAccount = await (program as any).account.visitorState.fetch(visitorState);
+            if (visitorStateAccount) {
+                console.log({
+                    visitorCount: visitorStateAccount.visitCount.toNumber(),
+                    lastVisit: visitorStateAccount.lastVisit.toNumber(),
+                });
+            } else {
+                console.log({ visitorStateAccount })
+            }
+        }}>Fetch Visitor State</Button>}
+        {program && wallet && <Button variant="outlined" color="secondary"
             onClick={async () => {
                 const mintPublicKey = new anchor.web3.PublicKey(mint);
-                await createTokenAccount(program, mintPublicKey, setGMAccount);
+                await createTokenAccount(program, mintPublicKey, setGMAccount, setMyAddress);
             }}>Create Token Account</Button>}
     </div>
 }

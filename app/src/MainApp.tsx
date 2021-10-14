@@ -1,6 +1,6 @@
 import React from 'react';
 import { AnchorWallet, useAnchorWallet } from '@solana/wallet-adapter-react';
-import { Button } from '@material-ui/core';
+import { Button, FormLabel } from '@material-ui/core';
 const serumCmn = require("@project-serum/common");
 const { TOKEN_PROGRAM_ID } = require("@solana/spl-token");
 
@@ -15,6 +15,7 @@ declare global {
         // add you custom properties and methods
         pdaAccount: any;
         error: any;
+        account: any;
     }
 }
 
@@ -22,6 +23,7 @@ declare global {
 const connectionUrl = 'https://api.devnet.solana.com';
 const INITIAL_MINT_AMOUNT = 1_000_000;
 const COOLOFF_SECONDS = 30;
+
 
 
 const Revisit = async (
@@ -157,6 +159,7 @@ const Fund = async (program: any,
         },
     });
     console.log("Your transaction signature", tx);
+    console.log("vault token account", vaultTokenAccount.toString());
     setAppState({ ...appState, vaultTokenAccount });
 }
 
@@ -215,7 +218,7 @@ const Init = async (
 
 export default function MainApp() {
     const anchorWallet = useAnchorWallet();
-    const [appState, setAppState] = React.useState({});
+    const [appState, setAppState] = React.useState<any>({});
     const [program, setProgram] = React.useState(null);
     const [printableAppState, setPrintableAppState] = React.useState({});
 
@@ -236,8 +239,9 @@ export default function MainApp() {
     }, [anchorWallet])
     return <>
         <div>Hello</div>
-        <div></div>
-        <div>{JSON.stringify(printableAppState)}</div>
+        <div> <FormLabel> Mint: <div style={{ display: "inline" }}>{appState.mint && appState.mint.toString()}</div></FormLabel> </div>
+        <div> <FormLabel> Original Vault: <div style={{ display: "inline" }}>{appState.originalVault && appState.originalVault.toString()}</div></FormLabel> </div>
+        <div> <FormLabel> App Vault: <div style={{ display: "inline" }}>{appState.program && appState.vaultTokenAccount.toString()}</div></FormLabel> </div>
         {program && <Button variant="outlined" color="secondary" onClick={async () => await Mint(program, appState, setAppState, setPrintableAppState)}>Mint</Button>}
         {program && <Button variant="outlined" color="secondary" onClick={async () => await Init(program, appState, setAppState, setPrintableAppState)}>Init</Button>}
         {program && <Button variant="outlined" color="secondary" onClick={async () => await Fund(program, appState, setAppState, setPrintableAppState)}>Fund</Button>}
