@@ -4,17 +4,10 @@ const { TOKEN_PROGRAM_ID } = require("@solana/spl-token");
 const { assert } = require('chai');
 
 describe('gm-coin', () => {
-
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.Provider.env());
-
-
   let mint, originalVault, vaultTokenAccount, vaultProgram, vaultProgramNonce;
-
-
   let visitor, visitorTokenAccount, visitorState, visitorBump;
-
-
 
   it('creates vault and vault program', async () => {
     const program = anchor.workspace.GmCoin;
