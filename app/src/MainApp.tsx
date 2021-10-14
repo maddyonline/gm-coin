@@ -8,6 +8,15 @@ const IDL = require("./gm_coin.json");
 const anchor = require("@project-serum/anchor");
 const { SystemProgram, Connection } = anchor.web3;
 
+
+declare global {
+    interface Window {
+        // add you custom properties and methods
+        pdaAccount: any;
+    }
+}
+
+
 const connectionUrl = 'https://api.devnet.solana.com';
 const INITIAL_MINT_AMOUNT = 1_000_000;
 const COOLOFF_SECONDS = 30;
@@ -34,17 +43,15 @@ const createMint = async (
         mint: _mint.toString(),
         originalVault: _originalVault.toString(),
     });
-    const _vault = anchor.web3.Keypair.generate();
 
-    let [_vaultProgram, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-        [_vault.publicKey.toBuffer()],
-        program.programId
-    )
 
     const [_pda, _bump] = await anchor.web3.PublicKey.findProgramAddress(
         [Buffer.from(anchor.utils.bytes.utf8.encode("gm_coin"))],
         program.programId
     );
+    const pdaAccount = await (new Connection(connectionUrl)).getAccountInfo(_pda);
+    console.log({ pdaAccount })
+    window.pdaAccount = pdaAccount;
     const cooloffSeconds = new anchor.BN(COOLOFF_SECONDS);
     const tx = await program.rpc.initialize(_bump, cooloffSeconds, {
         accounts: {
@@ -52,35 +59,9 @@ const createMint = async (
             payer: program.provider.wallet.publicKey,
             systemProgram: anchor.web3.SystemProgram.programId,
         },
-        signers: [_vault],
-        instructions: [
-            ...(await serumCmn.createTokenAccountInstrs(
-                program.provider,
-                _vault.publicKey,
-                _mint,
-                _vaultProgram
-            ))
-        ]
     });
     console.log("Your transaction signature", tx);
-    setAppState({
-        ...appState,
-        mint: _mint,
-        originalVault: _originalVault,
-        vault: _vault,
-        vaultProgram: _vaultProgram,
-        nonce: _nonce,
-    })
-    setPrintableAppState({
-        mint: _mint.toString(),
-        originalVault: _originalVault.toString(),
-        vault: {
-            publicKey: _vault.publicKey.toString(),
-            secretKey: "🤫",
-        },
-        vaultProgram: _vaultProgram.toString(),
-        _nonce
-    })
+
 }
 
 export default function MainApp() {
@@ -89,6 +70,7 @@ export default function MainApp() {
     const [printableAppState, setPrintableAppState] = React.useState({});
     return <>
         <div>Hello</div>
+        <div></div>
         <div>{JSON.stringify(printableAppState)}</div>
         {anchorWallet && <Button variant="outlined" color="secondary" onClick={async () => await createMint(anchorWallet, appState, setAppState, setPrintableAppState)}>Mint</Button>}
 

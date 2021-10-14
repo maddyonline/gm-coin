@@ -35,7 +35,7 @@ pub mod gm_coin {
         ctx.accounts.visitor_state.visit_count = 1;
         ctx.accounts.visitor_state.last_visit = ctx.accounts.clock.unix_timestamp;
         ctx.accounts.visitor_state.bump = visitor_bump;
-        let seeds = &[ctx.accounts.vault.to_account_info().key.as_ref(), &[nonce]];
+        let seeds = &[b"vault".as_ref(), &[nonce]];
         let signer = &[&seeds[..]];
         let cpi_accounts = Transfer {
             from: ctx.accounts.vault.to_account_info().clone(),
@@ -66,7 +66,7 @@ pub mod gm_coin {
         {
             msg!("yay! getting a reward now.");
             ctx.accounts.visitor_state.last_visit = ctx.accounts.clock.unix_timestamp;
-            let seeds = &[ctx.accounts.vault.to_account_info().key.as_ref(), &[nonce]];
+            let seeds = &[b"vault".as_ref(), &[nonce]];
             let signer = &[&seeds[..]];
             let cpi_accounts = Transfer {
                 from: ctx.accounts.vault.to_account_info().clone(),
@@ -117,7 +117,7 @@ pub struct FirstVisit<'info> {
     #[account(mut)]
     vault: AccountInfo<'info>,
     #[account(
-        seeds = [vault.to_account_info().key.as_ref()],
+        seeds = [b"vault".as_ref()],
         bump = nonce,
     )]
     vault_program: AccountInfo<'info>,
@@ -151,7 +151,7 @@ pub struct VisitAgain<'info> {
     #[account(mut)]
     vault: AccountInfo<'info>,
     #[account(
-        seeds = [vault.to_account_info().key.as_ref()],
+        seeds = [b"vault".as_ref()],
         bump = nonce,
     )]
     vault_program: AccountInfo<'info>,

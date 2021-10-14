@@ -9,23 +9,30 @@ describe('gm-coin', () => {
   anchor.setProvider(anchor.Provider.env());
 
 
-  let mint, originalVault, vault, vaultProgram, nonce;
+  let mint, originalVault, vaultTokenAccount, vaultProgram, vaultProgramNonce;
+
+
+  let visitor, visitorTokenAccount, visitorState, visitorBump;
+
 
 
   it('creates vault and vault program', async () => {
-    // Add your test here.
     const program = anchor.workspace.GmCoin;
+
     const [_mint, _originalVault] = await serumCmn.createMintAndVault(
       program.provider,
       new anchor.BN(1_000_000)
     );
-    const _vault = anchor.web3.Keypair.generate();
 
-    let [_vaultProgram, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [_vault.publicKey.toBuffer()],
+    let [_vaultProgram, _vaultProgramNonce] = await anchor.web3.PublicKey.findProgramAddress(
+      [Buffer.from(anchor.utils.bytes.utf8.encode("vault"))],
       program.programId
     )
 
+    // make vault program owner of vault (token account)
+    const _vaultTokenAccount = await serumCmn.createTokenAccount(program.provider, _mint, _vaultProgram);
+
+    // Create another PDA for storing global state (cooloffSeconds)
     const [_pda, _bump] = await anchor.web3.PublicKey.findProgramAddress(
       [Buffer.from(anchor.utils.bytes.utf8.encode("gm_coin"))],
       program.programId
@@ -37,41 +44,53 @@ describe('gm-coin', () => {
         payer: program.provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
-      signers: [_vault],
-      instructions: [
-        ...(await serumCmn.createTokenAccountInstrs(
-          program.provider,
-          _vault.publicKey,
-          _mint,
-          _vaultProgram
-        ))
-      ]
     });
     console.log("Your transaction signature", tx);
     mint = _mint;
     originalVault = _originalVault;
-    vault = _vault;
+    vaultTokenAccount = _vaultTokenAccount;
     vaultProgram = _vaultProgram;
-    nonce = _nonce;
+    vaultProgramNonce = _vaultProgramNonce;
+
+
+
   });
 
-  it('all relevant variables are initialized', async () => {
+  it('all mint related variables are initialized', async () => {
     console.log({
       mint: mint.toString(),
       originalVault: originalVault.toString(),
-      vault: {
-        publicKey: vault.publicKey.toString(),
-        secretKey: "🤫",
-      },
+      vault: vaultTokenAccount.toString(),
       vaultProgram: vaultProgram.toString(),
-      nonce
+      vaultProgramNonce
     })
     assert.equal(mint instanceof anchor.web3.PublicKey, true);
     assert.equal(originalVault instanceof anchor.web3.PublicKey, true);
-    assert.equal(vault instanceof anchor.web3.Keypair, true);
+    assert.equal(vaultTokenAccount instanceof anchor.web3.PublicKey, true);
     assert.equal(vaultProgram instanceof anchor.web3.PublicKey, true);
-    assert.equal(nonce === undefined, false);
+    assert.equal(vaultProgramNonce === undefined, false);
   });
+
+  it("initializes visitor", async () => {
+    const program = anchor.workspace.GmCoin;
+    const _visitor = anchor.web3.Keypair.generate();
+    const [_visitorState, _visitorBump] = await anchor.web3.PublicKey.findProgramAddress(
+      [_visitor.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const _visitorTokenAccount = await serumCmn.createTokenAccount(
+      program.provider,
+      mint,
+      _visitor.publicKey,
+    );
+    visitor = _visitor;
+    visitorTokenAccount = _visitorTokenAccount;
+    visitorState = _visitorState;
+    visitorBump = _visitorBump;
+  });
+
+
 
   it('funding vault works', async () => {
     const program = anchor.workspace.GmCoin;
@@ -79,7 +98,7 @@ describe('gm-coin', () => {
     const tx = await program.rpc.fund(amountToFund, {
       accounts: {
         from: originalVault,
-        vault: vault.publicKey,
+        vault: vaultTokenAccount,
         owner: program.provider.wallet.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
       },
@@ -87,27 +106,20 @@ describe('gm-coin', () => {
     console.log("Your transaction signature", tx);
   });
 
-  it('visits', async () => {
+  it('first visit', async () => {
     const program = anchor.workspace.GmCoin;
-    const visitor = anchor.web3.Keypair.generate();
-    const visitorTokenAccount = await serumCmn.createTokenAccount(
-      program.provider,
-      mint,
-      visitor.publicKey,
-    );
-    const [visitorState, visitorBump] = await anchor.web3.PublicKey.findProgramAddress(
-      [visitor.publicKey.toBuffer()],
-      program.programId
-    );
-    const tx = await program.rpc.firstVisit(nonce, visitorBump, {
+
+    const tx = await program.rpc.firstVisit(vaultProgramNonce, visitorBump, {
       accounts: {
         payer: program.provider.wallet.publicKey,
+        // visitor accounts
         visitor: visitor.publicKey,
         visitorState,
-        vault: vault.publicKey,
-        vaultProgram,
         to: visitorTokenAccount,
         owner: visitor.publicKey,
+        // vault accounts
+        vault: vaultTokenAccount,
+        vaultProgram,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
         clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
@@ -115,20 +127,24 @@ describe('gm-coin', () => {
       signers: [visitor]
     });
     console.log("First tx. Sleeping ...", tx);
-    await new Promise(r => setTimeout(r, 4000));
     console.log({ amount: (await serumCmn.getTokenAccount(program.provider, visitorTokenAccount)).amount.toNumber() });
+  });
 
+  it('first visit again', async () => {
+    const program = anchor.workspace.GmCoin;
     try {
 
-      const tx2 = await program.rpc.firstVisit(nonce, visitorBump, {
+      const tx2 = await program.rpc.firstVisit(vaultProgramNonce, visitorBump, {
         accounts: {
           payer: program.provider.wallet.publicKey,
+          // visitor accounts
           visitor: visitor.publicKey,
           visitorState,
-          vault: vault.publicKey,
-          vaultProgram,
           to: visitorTokenAccount,
           owner: visitor.publicKey,
+          // vault accounts
+          vault: vaultTokenAccount,
+          vaultProgram,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: anchor.web3.SystemProgram.programId,
           clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
@@ -143,18 +159,22 @@ describe('gm-coin', () => {
 
     }
 
+  });
+
+  it('subsequent visits', async () => {
+    const program = anchor.workspace.GmCoin;
     const revisit = async () => {
       const [_pda, _bump] = await anchor.web3.PublicKey.findProgramAddress(
         [Buffer.from(anchor.utils.bytes.utf8.encode("gm_coin"))],
         program.programId
       );
 
-      const tx = await program.rpc.visitAgain(nonce, {
+      const tx = await program.rpc.visitAgain(vaultProgramNonce, {
         accounts: {
           globalState: _pda,
           visitor: visitor.publicKey,
           visitorState,
-          vault: vault.publicKey,
+          vault: vaultTokenAccount,
           vaultProgram,
           to: visitorTokenAccount,
           owner: visitor.publicKey,
@@ -175,6 +195,7 @@ describe('gm-coin', () => {
 
     await revisit();
     await revisit();
+    console.log("sleeping for a while...")
     await new Promise(r => setTimeout(r, 30 * 1000));
     await revisit();
     await revisit();
