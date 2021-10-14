@@ -1,6 +1,6 @@
 import { WalletAdapterNetwork, WalletError } from '@solana/wallet-adapter-base';
 import { WalletDialogProvider } from '@solana/wallet-adapter-material-ui';
-import { AnchorWallet, ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
+import { AnchorWallet, ConnectionProvider, useConnection, WalletProvider } from '@solana/wallet-adapter-react';
 import {
     getLedgerWallet,
     getPhantomWallet,
@@ -31,7 +31,7 @@ const {
 } = require("@solana/spl-token");
 
 
-
+const serumCmn = require("@project-serum/common");
 
 
 const anchor = require("@project-serum/anchor");
@@ -46,6 +46,143 @@ const toAccountDetails = (account: any) => ({
     owner: account.owner.toString(),
     mint: account.mint.toString(),
 })
+
+
+
+function RevisitPage() {
+    const { connection } = useConnection();
+    const wallet = useAnchorWallet();
+    const [program, setProgram] = React.useState(null);
+    const [mint, setMint] = React.useState(null);
+    const [vault, setVault] = React.useState(null);
+    const [originalVault, setOriginalVault] = React.useState(null);
+    const [mintStr, setMintStr] = React.useState("")
+    const [vaultStr, setVaultStr] = React.useState("")
+    const [originalVaultStr, setOriginalVaultStr] = React.useState("")
+
+    React.useEffect(() => {
+        if (wallet && connection) {
+            const provider = new anchor.Provider(
+                connection,
+                wallet,
+                anchor.Provider.defaultOptions(),
+            );
+            console.log({ address: IDL.metadata.address })
+            const programId = new anchor.web3.PublicKey(IDL.metadata.address);
+            const program = new anchor.Program(IDL, programId, provider);
+            setProgram(program);
+        }
+
+    }, [wallet, connection])
+
+    const revisitInstruction = React.useCallback(async (
+        program: any,
+    ) => {
+        let visitorTokenAccount;
+        try {
+            const associatedToken = await Token.getAssociatedTokenAddress(
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                mint,
+                program.provider.wallet.publicKey
+            );
+
+            const client = new Token(
+                program.provider.connection,
+                mint,
+                TOKEN_PROGRAM_ID,
+                program.provider.wallet.publicKey
+            );
+
+            const account = await client.getAccountInfo(associatedToken);
+            console.log({ account })
+            visitorTokenAccount = account.address;
+        } catch (error) {
+            console.log(error);
+            return;
+        }
+
+        let [vaultProgram, vaultProgramNonce] = await anchor.web3.PublicKey.findProgramAddress(
+            [Buffer.from(anchor.utils.bytes.utf8.encode("vault"))],
+            program.programId
+        )
+
+        const [visitorState, _] = await anchor.web3.PublicKey.findProgramAddress(
+            [program.provider.wallet.publicKey.toBuffer()],
+            program.programId
+        )
+        const [_pda, __] = await anchor.web3.PublicKey.findProgramAddress(
+            [Buffer.from(anchor.utils.bytes.utf8.encode("gm_coin"))],
+            program.programId
+        );
+
+        const tx = await program.rpc.visitAgain(vaultProgramNonce, {
+            accounts: {
+                globalState: _pda,
+                visitor: program.provider.wallet.publicKey,
+                visitorState,
+                vault: new anchor.web3.PublicKey("DPgCpwZoRPj6SCumjBxoLZT68Jh9w7oWfzL8gsU9ePZH"),
+                vaultProgram,
+                to: visitorTokenAccount,
+                owner: program.provider.wallet.publicKey,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
+            },
+        });
+
+        console.log("Revisit tx", tx);
+        let visitorStateAccount = await program.account.visitorState.fetch(visitorState);
+        console.log({
+            visitorCount: visitorStateAccount.visitCount.toNumber(),
+            lastVisit: visitorStateAccount.lastVisit.toNumber(),
+        });
+    }, [connection, mint, vault, originalVault]);
+    return <div>
+        <form onSubmit={(e) => {
+            e.preventDefault();
+            if (mintStr) {
+                setMint(new anchor.web3.PublicKey(mintStr));
+            }
+            if (originalVaultStr) {
+                setOriginalVault(new anchor.web3.PublicKey(originalVaultStr));
+            }
+            if (vaultStr) {
+                setVault(new anchor.web3.PublicKey(vaultStr));
+            }
+            setMintStr("");
+            setVaultStr("");
+            setOriginalVaultStr("");
+
+        }}>
+            <div>
+                <div>{
+                    [
+                        [mint, "mint"],
+                        [vault, "vault"],
+                        [originalVault, "original vault"]
+                    ].filter(e => e[0])
+                        .map(e => <li key={e[1]}><label>{e[1]} {e[0]?.toString()}</label></li>)
+                }
+                </div>
+                <label>
+                    Mint
+                    <input type="text" name="mint" value={mintStr} onChange={(e) => setMintStr(e.target.value)} />
+                </label>
+
+            </div>
+            <label>
+                Vault
+                <input type="text" name="vault" value={vaultStr} onChange={(e) => setVaultStr(e.target.value)} />
+            </label>
+            <label>
+                Original Vault
+                <input type="text" name="originalVault" value={originalVaultStr} onChange={e => setOriginalVaultStr(e.target.value)} />
+            </label>
+            <input type="submit" />
+        </form>
+        <div>{program && <Button onClick={async () => await revisitInstruction(program)}>Revisit</Button>} </div>
+    </div>
+}
 
 const createTokenAccount = async (program: any, mint: any, setGMAccount: any, setMyAddress: any) => {
     const associatedToken = await Token.getAssociatedTokenAddress(
@@ -180,8 +317,103 @@ function Home() {
 
 
 
-function Users() {
-    return <h2>Users</h2>;
+
+
+function FundAccount() {
+    const { connection } = useConnection();
+    const wallet = useAnchorWallet();
+    const [program, setProgram] = React.useState(null);
+    const [mint, setMint] = React.useState(null);
+    const [vault, setVault] = React.useState(null);
+    const [originalVault, setOriginalVault] = React.useState(null);
+    const [mintStr, setMintStr] = React.useState("")
+    const [vaultStr, setVaultStr] = React.useState("")
+    const [originalVaultStr, setOriginalVaultStr] = React.useState("")
+
+    React.useEffect(() => {
+        if (wallet && connection) {
+            const provider = new anchor.Provider(
+                connection,
+                wallet,
+                anchor.Provider.defaultOptions(),
+            );
+            console.log({ address: IDL.metadata.address })
+            const programId = new anchor.web3.PublicKey(IDL.metadata.address);
+            const program = new anchor.Program(IDL, programId, provider);
+            setProgram(program);
+        }
+
+    }, [wallet, connection])
+
+    const fundInstruction = React.useCallback(async (program: any) => {
+        if (!vault || !originalVault || !mint) {
+            return;
+        }
+        let [vaultProgram, _] = await anchor.web3.PublicKey.findProgramAddress(
+            [Buffer.from(anchor.utils.bytes.utf8.encode("vault"))],
+            program.programId
+        )
+        const vaultProgramFetched = await connection.getAccountInfo(vaultProgram);
+        console.log({ vaultProgramFetched })
+
+
+
+        const amountToFund = new anchor.BN(10_000) // BN: BigNumber
+        const tx = await program.rpc.fund(amountToFund, {
+            accounts: {
+                from: originalVault,
+                vault,
+                owner: program.provider.wallet.publicKey,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            },
+        });
+        console.log("Your transaction signature", tx);
+    }, [connection, mint, vault, originalVault]);
+    return <div>
+        <form onSubmit={(e) => {
+            e.preventDefault();
+            if (mintStr) {
+                setMint(new anchor.web3.PublicKey(mintStr));
+            }
+            if (originalVaultStr) {
+                setOriginalVault(new anchor.web3.PublicKey(originalVaultStr));
+            }
+            if (vaultStr) {
+                setVault(new anchor.web3.PublicKey(vaultStr));
+            }
+            setMintStr("");
+            setVaultStr("");
+            setOriginalVaultStr("");
+
+        }}>
+            <div>
+                <div>{
+                    [
+                        [mint, "mint"],
+                        [vault, "vault"],
+                        [originalVault, "original vault"]
+                    ].filter(e => e[0])
+                        .map(e => <li key={e[1]}><label>{e[1]} {e[0]?.toString()}</label></li>)
+                }
+                </div>
+                <label>
+                    Mint
+                    <input type="text" name="mint" value={mintStr} onChange={(e) => setMintStr(e.target.value)} />
+                </label>
+
+            </div>
+            <label>
+                Vault
+                <input type="text" name="vault" value={vaultStr} onChange={(e) => setVaultStr(e.target.value)} />
+            </label>
+            <label>
+                Original Vault
+                <input type="text" name="originalVault" value={originalVaultStr} onChange={e => setOriginalVaultStr(e.target.value)} />
+            </label>
+            <input type="submit" />
+        </form>
+        <div>{program && <Button onClick={async () => await fundInstruction(program)}>Fund</Button>} </div>
+    </div>
 }
 
 function RouterApp() {
@@ -192,8 +424,11 @@ function RouterApp() {
                 <Route path="/admin">
                     <MainApp />
                 </Route>
-                <Route path="/users">
-                    <Users />
+                <Route path="/fund">
+                    <FundAccount />
+                </Route>
+                <Route path="/revisit">
+                    <RevisitPage />
                 </Route>
                 <Route path="/">
                     <Home />

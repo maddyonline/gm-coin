@@ -19,11 +19,14 @@ const Navigation: FC = () => {
             <Button variant="contained" color="secondary" component={RouterLink} to="/">
                 Home
             </Button>
+            <Button variant="contained" color="secondary" component={RouterLink} to="/revisit">
+                Revisit
+            </Button>
             <Button variant="contained" color="secondary" component={RouterLink} to="/admin">
                 Admin
             </Button>
-            <Button variant="contained" color="secondary" component={RouterLink} to="/users">
-                Users
+            <Button variant="contained" color="secondary" component={RouterLink} to="/fund">
+                Fund
             </Button>
             <WalletMultiButton />
             {wallet && <WalletDisconnectButton startIcon={<DisconnectIcon />} style={{ marginLeft: 8 }} />}
