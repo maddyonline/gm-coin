@@ -1,11 +1,19 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, TokenAccount, Transfer};
+use anchor_spl::token::{Mint, Token};
+use anchor_spl::associated_token::AssociatedToken;
+
+
 
 declare_id!("Ga2AwQnLartZJ2WtVP5hALiBNRo5AM4jkLah7gSVLkWi");
 
 #[program]
 pub mod gm_coin {
     use super::*;
+    pub fn init_associated_token(ctx: Context<InitAssociatedToken>) -> ProgramResult {
+        assert!(ctx.accounts.token.mint == ctx.accounts.mint.key());
+        Ok(())
+    }
     pub fn initialize(ctx: Context<Initialize>, bump: u8, cooloff_seconds: i64) -> ProgramResult {
         msg!("instruction: [initialize]");
         msg!("args: bump={}, cooloff_seconds={}", bump, cooloff_seconds);
@@ -84,6 +92,23 @@ pub mod gm_coin {
 #[test]
 fn it_works() {
     assert_eq!(2 + 2, 4);
+}
+
+#[derive(Accounts)]
+pub struct InitAssociatedToken<'info> {
+    #[account(
+        init,
+        payer = payer,
+        associated_token::mint = mint,
+        associated_token::authority = payer,
+    )]
+    pub token: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
+    pub payer: Signer<'info>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
