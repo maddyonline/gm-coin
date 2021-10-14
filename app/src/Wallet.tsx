@@ -39,10 +39,51 @@ const anchor = require("@project-serum/anchor");
 const { Connection } = anchor.web3;
 
 
+const IDL = require("./gm_coin.json")
+
+
+const createTokenAccount = async (program: any, mint: any, setGMAccount: any) => {
+    const associatedToken = await Token.getAssociatedTokenAddress(
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        mint,
+        program.provider.wallet.publicKey
+    );
+
+    await program.rpc.initAssociatedToken({
+        accounts: {
+            token: associatedToken,
+            mint: mint,
+            payer: program.provider.wallet.publicKey,
+            rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+            systemProgram: anchor.web3.SystemProgram.programId,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        },
+    });
+    const client = new Token(
+        program.provider.connection,
+        mint,
+        TOKEN_PROGRAM_ID,
+        program.provider.wallet.publicKey
+    );
+    try {
+
+        const account = await client.getAccountInfo(associatedToken);
+        setGMAccount(account);
+    } catch (error) {
+        const errorMsg = (error as Error).message;
+        setGMAccount({ error: errorMsg })
+    }
+}
+
+
 function Home() {
     const wallet = useAnchorWallet();
-    const [gmAccount, setGMAccount] = React.useState<{error: string;} | null>(null);
+    const [program, setProgram] = React.useState(null);
+    const [gmAccount, setGMAccount] = React.useState<{ error: string; } | null>(null);
     const [mint, setMint] = React.useState("4J6rkqPDobhwHo234QKCWRyPynJwwFRxGmA1A8ZsXD87");
+
 
     React.useEffect(() => {
         const updateAccount = async (mint: any, wallet: AnchorWallet) => {
@@ -68,6 +109,18 @@ function Home() {
                 setGMAccount({ error: errorMsg })
             }
         }
+        if (wallet) {
+            const provider = new anchor.Provider(
+                new Connection('https://api.devnet.solana.com'),
+                wallet,
+                anchor.Provider.defaultOptions(),
+            );
+            console.log({ address: IDL.metadata.address })
+            const programId = new anchor.web3.PublicKey(IDL.metadata.address);
+            const program = new anchor.Program(IDL, programId, provider);
+            setProgram(program);
+        }
+
         if (mint && wallet) {
             const mintPublicKey = new anchor.web3.PublicKey(mint);
             updateAccount(mintPublicKey, wallet);
@@ -86,6 +139,11 @@ function Home() {
             <input value={mint} onChange={(e) => setMint(e.target.value)} name="mint" type="text" placeholder="mint" />
             <input type="submit" />
         </form>
+        {program && <Button variant="outlined" color="secondary"
+            onClick={async () => {
+                const mintPublicKey = new anchor.web3.PublicKey(mint);
+                await createTokenAccount(program, mintPublicKey, setGMAccount);
+            }}>Create Token Account</Button>}
     </div>
 }
 
