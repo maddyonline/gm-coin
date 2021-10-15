@@ -14,7 +14,7 @@ describe('gm-coin', () => {
   let visitor, visitorTokenAccount, visitorState, visitorBump;
 
 
-
+  
   it('creates vault and vault program', async () => {
     const program = anchor.workspace.GmCoin;
 
@@ -104,7 +104,7 @@ describe('gm-coin', () => {
     assert.ok(account.mint.equals(mint));
   });
 
-  it.skip("initializes visitor", async () => {
+  it("initializes visitor", async () => {
     const program = anchor.workspace.GmCoin;
     const _visitor = anchor.web3.Keypair.generate();
     const [_visitorState, _visitorBump] = await anchor.web3.PublicKey.findProgramAddress(
@@ -125,7 +125,7 @@ describe('gm-coin', () => {
 
 
 
-  it.skip('funding vault works', async () => {
+  it('funding vault works', async () => {
     const program = anchor.workspace.GmCoin;
     const amountToFund = new anchor.BN(10_000) // BN: BigNumber
     const tx = await program.rpc.fund(amountToFund, {
@@ -139,7 +139,7 @@ describe('gm-coin', () => {
     console.log("Your transaction signature", tx);
   });
 
-  it.skip('first visit', async () => {
+  it('first visit', async () => {
     const program = anchor.workspace.GmCoin;
 
     const tx = await program.rpc.firstVisit(vaultProgramNonce, visitorBump, {
@@ -163,7 +163,7 @@ describe('gm-coin', () => {
     console.log({ amount: (await serumCmn.getTokenAccount(program.provider, visitorTokenAccount)).amount.toNumber() });
   });
 
-  it.skip('first visit again', async () => {
+  it('first visit again', async () => {
     const program = anchor.workspace.GmCoin;
     try {
 
@@ -194,7 +194,7 @@ describe('gm-coin', () => {
 
   });
 
-  it.skip('subsequent visits', async () => {
+  it('subsequent visits', async () => {
     const program = anchor.workspace.GmCoin;
     const revisit = async () => {
       const [_pda, _bump] = await anchor.web3.PublicKey.findProgramAddress(
