@@ -1,9 +1,7 @@
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{self, TokenAccount, Transfer};
 use anchor_spl::token::{Mint, Token};
-use anchor_spl::associated_token::AssociatedToken;
-
-
 
 declare_id!("Ga2AwQnLartZJ2WtVP5hALiBNRo5AM4jkLah7gSVLkWi");
 
@@ -15,7 +13,7 @@ pub mod gm_coin {
         Ok(())
     }
     pub fn initialize(ctx: Context<Initialize>, bump: u8, cooloff_seconds: i64) -> ProgramResult {
-        msg!("instruction: [initialize]");
+        msg!("GM. instruction: [initialize]");
         msg!("args: bump={}, cooloff_seconds={}", bump, cooloff_seconds);
         let global_state = &mut ctx.accounts.global_state;
         global_state.bump = bump;
@@ -23,7 +21,7 @@ pub mod gm_coin {
         Ok(())
     }
     pub fn fund(ctx: Context<FundVault>, amount: u64) -> ProgramResult {
-        msg!("instruction: [fund]");
+        msg!("GM. instruction: [fund]");
         msg!("args: amount={}", amount);
 
         let cpi_accounts = Transfer {
@@ -37,32 +35,22 @@ pub mod gm_coin {
         Ok(())
     }
 
-    pub fn first_visit(ctx: Context<FirstVisit>, nonce: u8, visitor_bump: u8) -> ProgramResult {
-        msg!("instruction: [first_visit]");
-        msg!("args: nonce={}, visitor_bump={}", nonce, visitor_bump);
+    pub fn first_visit(ctx: Context<FirstVisit>, visitor_bump: u8) -> ProgramResult {
+        msg!("GM. instruction: [first_visit]");
+        msg!("args: visitor_bump={}", visitor_bump);
         ctx.accounts.visitor_state.visit_count = 1;
         ctx.accounts.visitor_state.last_visit = ctx.accounts.clock.unix_timestamp;
         ctx.accounts.visitor_state.bump = visitor_bump;
-        let seeds = &[b"vault".as_ref(), &[nonce]];
-        let signer = &[&seeds[..]];
-        let cpi_accounts = Transfer {
-            from: ctx.accounts.vault.to_account_info().clone(),
-            to: ctx.accounts.to.to_account_info().clone(),
-            authority: ctx.accounts.vault_program.clone(),
-        };
-        let cpi_program = ctx.accounts.token_program.clone();
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
-        token::transfer(cpi_ctx, 10)?;
         Ok(())
     }
     pub fn visit_again(ctx: Context<VisitAgain>, nonce: u8) -> ProgramResult {
-        msg!("instruction: [visit_again]");
+        msg!("GM. instruction: [visit_again]");
         msg!("args: nonce={}", nonce);
 
         ctx.accounts.visitor_state.visit_count += 1;
 
         msg!(
-            "Welcome back {}, you've now visited {} times.",
+            "GM {}, you've now visited {} times.",
             ctx.accounts.visitor.key,
             ctx.accounts.visitor_state.visit_count
         );
@@ -72,7 +60,7 @@ pub mod gm_coin {
         if ctx.accounts.clock.unix_timestamp - ctx.accounts.visitor_state.last_visit
             > cooloff_seconds
         {
-            msg!("yay! getting a reward now.");
+            msg!("GM! This GM is extra special. You get a reward.");
             ctx.accounts.visitor_state.last_visit = ctx.accounts.clock.unix_timestamp;
             let seeds = &[b"vault".as_ref(), &[nonce]];
             let signer = &[&seeds[..]];
@@ -132,25 +120,13 @@ pub struct FundVault<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(nonce: u8, visitor_bump: u8)]
+#[instruction(visitor_bump: u8)]
 pub struct FirstVisit<'info> {
     clock: Sysvar<'info, Clock>,
     payer: Signer<'info>,
     visitor: Signer<'info>,
     #[account(init, seeds = [visitor.key.as_ref()], bump = visitor_bump, payer = payer, space = 8 + 8 + 8 + 1)]
     visitor_state: Account<'info, VisitorState>,
-    #[account(mut)]
-    vault: AccountInfo<'info>,
-    #[account(
-        seeds = [b"vault".as_ref()],
-        bump = nonce,
-    )]
-    vault_program: AccountInfo<'info>,
-    #[account(mut, has_one = owner)]
-    to: Account<'info, TokenAccount>,
-    #[account(signer)]
-    owner: AccountInfo<'info>,
-    token_program: AccountInfo<'info>,
     system_program: Program<'info, System>,
 }
 

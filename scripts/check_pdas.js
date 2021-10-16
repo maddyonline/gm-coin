@@ -12,15 +12,28 @@ const provider = new anchor.Provider(
 const programId = new anchor.web3.PublicKey(IDL.metadata.address);
 const program = new anchor.Program(IDL, programId, provider);
 
+const publicKeys = [
+    new anchor.web3.PublicKey("8HyEh6yhYvNPo1sTYQvEkSPARVgZB3JkVR6MdW13rk7d"),
+    new anchor.web3.PublicKey("3rmNzCUDq2Dy59Xnet5vAbSWJXth1pvt43RrWbYrCKKx"),
+]
 
 async function lookupPdas() {
     const pdas = [
         "gm_coin",
         "vault",
+        ...publicKeys,
     ]
     for (const seedStr of pdas) {
+        let buffer;
+        if (typeof seedStr === "string") {
+            buffer = Buffer.from(anchor.utils.bytes.utf8.encode(seedStr));
+        } else if (seedStr instanceof anchor.web3.PublicKey) {
+            buffer = seedStr.toBuffer();
+        } else {
+            throw new Error("Unrecognized type");
+        }
         const [pdaPublicKey, pdaNonce] = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from(anchor.utils.bytes.utf8.encode(seedStr))],
+            [buffer],
             programId
         )
 

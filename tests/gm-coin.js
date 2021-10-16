@@ -14,7 +14,7 @@ describe('gm-coin', () => {
   let visitor, visitorTokenAccount, visitorState, visitorBump;
 
 
-  
+
   it('creates vault and vault program', async () => {
     const program = anchor.workspace.GmCoin;
 
@@ -142,54 +142,35 @@ describe('gm-coin', () => {
   it('first visit', async () => {
     const program = anchor.workspace.GmCoin;
 
-    const tx = await program.rpc.firstVisit(vaultProgramNonce, visitorBump, {
+    await program.rpc.firstVisit(visitorBump, {
       accounts: {
         payer: program.provider.wallet.publicKey,
         // visitor accounts
         visitor: visitor.publicKey,
         visitorState,
-        to: visitorTokenAccount,
-        owner: visitor.publicKey,
-        // vault accounts
-        vault: vaultTokenAccount,
-        vaultProgram,
-        tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
         clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
       },
       signers: [visitor]
     });
-    console.log("First tx. Sleeping ...", tx);
-    console.log({ amount: (await serumCmn.getTokenAccount(program.provider, visitorTokenAccount)).amount.toNumber() });
   });
 
   it('first visit again', async () => {
     const program = anchor.workspace.GmCoin;
     try {
-
-      const tx2 = await program.rpc.firstVisit(vaultProgramNonce, visitorBump, {
+      await program.rpc.firstVisit(visitorBump, {
         accounts: {
           payer: program.provider.wallet.publicKey,
           // visitor accounts
           visitor: visitor.publicKey,
           visitorState,
-          to: visitorTokenAccount,
-          owner: visitor.publicKey,
-          // vault accounts
-          vault: vaultTokenAccount,
-          vaultProgram,
-          tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: anchor.web3.SystemProgram.programId,
           clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
         },
         signers: [visitor]
       });
-      console.log("Second tx", tx2);
     } catch (error) {
-      // TODO (maddy): throw better error
-      console.log(`As expected, got error, reinitializing account a second time`, error)
-      console.log({ amount: (await serumCmn.getTokenAccount(program.provider, visitorTokenAccount)).amount.toNumber() });
-
+      console.log(error);
     }
 
   });
