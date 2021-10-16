@@ -155,7 +155,7 @@ describe('gm-coin', () => {
     });
   });
 
-  it('first visit again', async () => {
+  it.skip('first visit again', async () => {
     const program = anchor.workspace.GmCoin;
     try {
       await program.rpc.firstVisit(visitorBump, {
